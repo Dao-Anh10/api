@@ -79,7 +79,7 @@ let courseController = {
         try {
             let course = await Course.find({ name: {$regex: req.query.sea, $options: "$i"} });
             return (course.length == 0) ? res.status(404).json({ message: 'Not Found' }) 
-                            : res.status(200).json({ message: 'Done', result: course });
+                            : res.status(200).json({ result: course });
         } catch (err) {
             res.status(500).json({ message: 'Server Error at fn searchCourse', error: err });
         }
