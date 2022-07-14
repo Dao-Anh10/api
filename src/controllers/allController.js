@@ -1,5 +1,8 @@
 const argon2 = require('argon2');
+const { json } = require('body-parser');
 const jwt = require('jsonwebtoken');
+const Course = require('../models/courseModel');
+const { findById } = require('../models/courseModel');
 
 const courseModel = require('../models/courseModel');
 const User = require('../models/userModel');
@@ -8,10 +11,17 @@ const userModel = require('../models/userModel');
 let courseController = {
     getAllCourse: async (req, res) => {
         try {
-            let listCourses = await courseModel.find();
-            res.status(200).json({ message: 'Done', result: listCourses });
+            let reqUxo = req.uxoId.userId;
+            let pageCur = req.query.page;
+            if(!pageCur) {
+                pageCur = 1;
+            };
+            let listCourses = await courseModel.find({}).limit(4).skip((pageCur - 1) * 4);
+            console.log(reqUxo);
+            let user = await User.findById(reqUxo).select('-password');
+            res.status(200).json({ message: 'Done', result: listCourses, pageNumber: pageCur, user: user });
         } catch (err) {
-            res.status(500).json({ message: 'Server Error at fn addCourse', error: err });
+            res.status(500).json({ message: 'Server Error at fn getAllCourse', error: err });
             console.log(err);
         }
     },
@@ -21,12 +31,14 @@ let courseController = {
             console.log(course);
             res.status(200).json({ message: 'Done', result: course });
         } catch (err) {
-            res.status(500).json({ message: 'Server Error at fn addCourse', error: err });
+            res.status(500).json({ message: 'Server Error at fn getCourseById', error: err });
             console.log(err);
         }
     },
     addCourse: async (req, res) => {
         try {
+            let reqUxo = req.uxoId;            
+            req.body.userId = reqUxo.userId;
             let newCourse = new courseModel(req.body);
             let saveCourse = await newCourse.save();
             res.status(200).json({ message: 'Add Done', result: newCourse });
@@ -63,6 +75,16 @@ let courseController = {
             console.log(err);
         }
     },
+    searchCourse: async (req, res) => {
+        try {
+            let course = await Course.find({ name: {$regex: req.query.sea, $options: "$i"} });
+            return !course ? res.status(404).json({ message: 'Not have result' }) 
+                            : res.status(200).json({ message: 'Not Found', result: course });
+        } catch (err) {
+            res.status(500).json({ message: 'Server Error at fn searchCourse', error: err });
+        }
+    }
+
 };
 
 let userController = {
@@ -84,7 +106,7 @@ let userController = {
             let saveUser = await newUser.save();
 
             //return token
-            const accsessToken = jwt.sign({ userId: newUser._id }, 'abcxyz');
+            const accsessToken = jwt.sign({ userId: newUser._id }, process.env.ACCSESS_TOKEN);
             console.log(accsessToken);
             res.status(200).json({ message: 'Register Done', result: newUser, accsessToken });
 
@@ -100,16 +122,16 @@ let userController = {
     
             let checkUser = await User.findOne({ username: user });
             console.log(user + ' vv ' + pass);
+            const accsessToken = jwt.sign({ userId: checkUser._id }, process.env.ACCSESS_TOKEN);
             if (checkUser) {
                 let checkPass = await argon2.verify(checkUser.password, pass);
-                return checkPass ? res.status(200).json({ message: 'Login successed', result: checkUser })
-                                : res.status(401).json({ message: 'Login failed' });
+                return checkPass ? res.status(200).json({ message: 'Done' , accsessToken}) : res.status(401).json({ message: 'Error'});
             }
         } catch (err) {
             res.status(500).json({ message: 'Server Error at fn registerUser', error: err });
             console.log(err);
-        } 
-    }
+        }  
+    }   
 };
 module.exports = { courseController, userController }; 
- 
+  
