@@ -13,6 +13,6 @@ app.use(express.json());
 
 app.use('/api', routerCourse);
 
-app.listen(3000, () => {
+app.listen(PORT, () => {
     console.log('Server is running at port: ' + PORT);
 });
